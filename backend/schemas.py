@@ -1,6 +1,18 @@
 from datetime import datetime, date
 from typing import Optional
 from pydantic import BaseModel
+from enum import Enum
+
+class ReservationStatus(str, Enum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+
+class PaymentStatus(str, Enum):
+    UNPAID = "unpaid"
+    PAID = "paid"
+    REFUNDED = "refunded"
+
 
 
 # ======================================================
@@ -25,7 +37,7 @@ class UserResponse(UserBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserUpdate(BaseModel):
@@ -37,7 +49,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # خروجی عمومی که در روتر users استفاده می‌شود
@@ -50,7 +62,7 @@ class UserOut(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ======================================================
@@ -72,21 +84,21 @@ class ReservationCreate(ReservationBase):
 
 
 class ReservationUpdate(BaseModel):
-    status: Optional[str] = None
-    payment_status: Optional[str] = None
+    status: Optional[ReservationStatus] = None
+    payment_status: Optional[PaymentStatus] = None
     notes: Optional[str] = None
 
 
 class ReservationResponse(ReservationBase):
     id: int
     coworker_id: Optional[int] = None
-    status: str
-    payment_status: str
+    status: PaymentStatus
+    payment_status: PaymentStatus
     created_at: datetime
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ======================================================
@@ -106,11 +118,11 @@ class PaymentResponse(PaymentBase):
     id: int
     reservation_id: Optional[int]
     payment_date: datetime
-    status: str
+    status: PaymentStatus
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ======================================================
@@ -131,7 +143,7 @@ class ReferralResponse(ReferralBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # ======================================================
@@ -155,5 +167,5 @@ class DiscountResponse(DiscountBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
