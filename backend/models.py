@@ -22,7 +22,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     phone = Column(String(20), unique=True, index=True, nullable=False)
-    full_name = Column(String(100), nullable=True)
+    name = Column(String(50), nullable=True)
+    family = Column(String(50), nullable=True)
     role = Column(String(20), default="user")  # user / admin / coworker
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -108,7 +109,7 @@ class Discount(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), unique=True, nullable=False)
-    discount_percent = Column(Integer, nullable=False)
+    percentage = Column(Integer, nullable=False)
     max_amount = Column(Float, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -127,5 +128,5 @@ class Referral(Base):
     invited_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", back_populates="referral")
+    user = relationship("User", back_populates="referral", uselist=False)
 
