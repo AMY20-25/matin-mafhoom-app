@@ -13,8 +13,6 @@ class PaymentStatus(str, Enum):
     PAID = "paid"
     REFUNDED = "refunded"
 
-
-
 # ======================================================
 # Users
 # ======================================================
@@ -26,19 +24,20 @@ class UserBase(BaseModel):
     national_code: Optional[str] = None
     avatar_url: Optional[str] = None
 
+class UserRegister(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    family: Optional[str] = None
 
 class UserCreate(UserBase):
     role: Optional[str] = "customer"
-
 
 class UserResponse(UserBase):
     id: int
     role: str
     created_at: datetime
-
     class Config:
         from_attributes = True
-
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -47,12 +46,9 @@ class UserUpdate(BaseModel):
     national_code: Optional[str] = None
     avatar_url: Optional[str] = None
     role: Optional[str] = None
-
     class Config:
         from_attributes = True
 
-
-# خروجی عمومی که در روتر users استفاده می‌شود
 class UserOut(BaseModel):
     id: int
     name: Optional[str]
@@ -60,10 +56,8 @@ class UserOut(BaseModel):
     phone: str
     role: str
     created_at: datetime
-
     class Config:
         from_attributes = True
-
 
 # ======================================================
 # Reservations
@@ -78,28 +72,23 @@ class ReservationBase(BaseModel):
     deposit_paid: Optional[int] = None
     notes: Optional[str] = None
 
-
 class ReservationCreate(ReservationBase):
     pass
-
 
 class ReservationUpdate(BaseModel):
     status: Optional[ReservationStatus] = None
     payment_status: Optional[PaymentStatus] = None
     notes: Optional[str] = None
 
-
 class ReservationResponse(ReservationBase):
     id: int
     coworker_id: Optional[int] = None
-    status: PaymentStatus
+    status: ReservationStatus
     payment_status: PaymentStatus
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
-
 
 # ======================================================
 # Payments
@@ -109,10 +98,8 @@ class PaymentBase(BaseModel):
     user_id: int
     amount: float
 
-
 class PaymentCreate(PaymentBase):
     reservation_id: Optional[int] = None
-
 
 class PaymentResponse(PaymentBase):
     id: int
@@ -120,10 +107,8 @@ class PaymentResponse(PaymentBase):
     payment_date: datetime
     status: PaymentStatus
     created_at: datetime
-
     class Config:
         from_attributes = True
-
 
 # ======================================================
 # Referrals
@@ -133,18 +118,14 @@ class ReferralBase(BaseModel):
     inviter_id: int
     invitee_id: int
 
-
 class ReferralCreate(ReferralBase):
     pass
-
 
 class ReferralResponse(ReferralBase):
     id: int
     created_at: datetime
-
     class Config:
         from_attributes = True
-
 
 # ======================================================
 # Discounts
@@ -156,16 +137,12 @@ class DiscountBase(BaseModel):
     percentage: int
     valid_until: Optional[datetime] = None
 
-
 class DiscountCreate(DiscountBase):
     pass
-
 
 class DiscountResponse(DiscountBase):
     id: int
     used: bool
     created_at: datetime
-
     class Config:
         from_attributes = True
-

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from crud.crud_users import create_user, get_user_by_phone, get_user_by_id, get_all_users
-from schemas import UserCreate, UserOut
+from schemas import UserRegister, UserCreate, UserOut
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -11,8 +11,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 # Create new user
 # -------------------------------
 @router.post("/", response_model=UserOut)
-def create_new_user(data: UserCreate, db: Session = Depends(get_db)):
-    user = get_user_by_phone(db, data.phone_number)
+def create_new_user(data: UserRegister, db: Session = Depends(get_db)):
+    user = get_user_by_phone(db, data.phone)
     if user:
         raise HTTPException(status_code=400, detail="User already registered")
     return create_user(db, data)
