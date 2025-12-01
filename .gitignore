@@ -1,0 +1,62 @@
+# === Secrets (Most Important!) ===
+*.env
+.env
+.env.*
+key.properties
+local.properties
+
+# === Python / Backend ===
+__pycache__/
+*.py[cod]
+*.class
+*.so
+venv/
+.venv/
+env/
+.env/
+
+# === AI & Large Files (Crucial!) ===
+# Ignore entire directories used for storing large models and 3rd-party code
+backend/ai_models/
+backend/gfpgan/
+backend/GFPGAN/
+
+# Ignore large files by extension, wherever they are
+*.pth
+*.onnx
+*.zip
+*.pt
+*.bin
+*.model
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.partial
+*.mdb
+
+# === Test & Output Files ===
+*.json
+*.log
+
+# === IDE & OS Files ===
+.idea/
+.vscode/
+.DS_Store
+*.sw?
+
+# === Flutter / Frontend ===
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.dart_tool/
+build/
+ios/Pods/
+ios/Flutter/
+ios/.symlinks/
+android/app/src/main/jniLibs/
+*.iml
+*.metadata
+
+# === Specific Files to Ignore ===
+"backend/uvicorn ASGI"*
