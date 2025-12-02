@@ -16,7 +16,6 @@ class PaymentStatus(str, Enum):
 # ======================================================
 # Users
 # ======================================================
-
 class UserBase(BaseModel):
     name: Optional[str] = None
     family: Optional[str] = None
@@ -62,7 +61,6 @@ class UserOut(BaseModel):
 # ======================================================
 # Reservations
 # ======================================================
-
 class ReservationBase(BaseModel):
     user_id: int
     service_type: str
@@ -80,7 +78,7 @@ class ReservationUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
     notes: Optional[str] = None
 
-class ReservationResponse(ReservationBase):
+class ReservationResponse(BaseModel):
     id: int
     coworker_id: Optional[int] = None
     status: ReservationStatus
@@ -93,7 +91,6 @@ class ReservationResponse(ReservationBase):
 # ======================================================
 # Payments
 # ======================================================
-
 class PaymentBase(BaseModel):
     user_id: int
     amount: float
@@ -101,7 +98,7 @@ class PaymentBase(BaseModel):
 class PaymentCreate(PaymentBase):
     reservation_id: Optional[int] = None
 
-class PaymentResponse(PaymentBase):
+class PaymentResponse(BaseModel):
     id: int
     reservation_id: Optional[int]
     payment_date: datetime
@@ -111,26 +108,8 @@ class PaymentResponse(PaymentBase):
         from_attributes = True
 
 # ======================================================
-# Referrals
-# ======================================================
-
-class ReferralBase(BaseModel):
-    inviter_id: int
-    invitee_id: int
-
-class ReferralCreate(ReferralBase):
-    pass
-
-class ReferralResponse(ReferralBase):
-    id: int
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-# ======================================================
 # Discounts
 # ======================================================
-
 class DiscountBase(BaseModel):
     user_id: int
     discount_type: str
@@ -140,9 +119,21 @@ class DiscountBase(BaseModel):
 class DiscountCreate(DiscountBase):
     pass
 
-class DiscountResponse(DiscountBase):
+class DiscountResponse(BaseModel):
     id: int
     used: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# ======================================================
+# Referrals
+# ======================================================
+class ReferralResponse(BaseModel):
+    id: int
+    user_id: int
+    referral_code: str
+    invited_count: int
     created_at: datetime
     class Config:
         from_attributes = True

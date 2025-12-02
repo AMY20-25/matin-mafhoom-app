@@ -1,33 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
+from typing import List
 
+# Import dependencies and models
 from database import get_db
-from crud.crud_referrals import (
-    create_referral as crud_create_referral,
-    get_user_referrals
-)
-from schemas import ReferralCreate, ReferralResponse
+from models import User
+from crud import crud_referrals
+from schemas import ReferralResponse 
+from auth import get_current_user
 
 router = APIRouter(prefix="/referrals", tags=["Referrals"])
 
+# We need a Pydantic model for the response, inheriting from the base
+class ReferralInfo(ReferralResponse):
+    pass # ReferralResponse already has all the fields we need
 
-# =====================================================
-# Create a referral (inviter invites someone)
-# =====================================================
-@router.post("/", response_model=ReferralResponse)
-def create_new_referral(data: ReferralCreate, db: Session = Depends(get_db)):
+@router.get("/me", response_model=ReferralInfo)
+def read_my_referral_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return crud_referrals.create_referral_profile(db, user_id=current_user.id)
+
+@router.post("/apply", status_code=status.HTTP_200_OK)
+def apply_referral_code(
+    code: str = Body(..., embed=True), 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
     try:
-        return crud_create_referral(db, data)
-    except HTTPException:
-        raise
+        return crud_referrals.apply_referral_code(db, applying_user_id=current_user.id, code=code)
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# =====================================================
-# Get referrals sent by a specific user
-# =====================================================
-@router.get("/user/{user_id}", response_model=list[ReferralResponse])
-def list_user_referrals(user_id: int, db: Session = Depends(get_db)):
-    return get_user_referrals(db, user_id)
-
+        raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
