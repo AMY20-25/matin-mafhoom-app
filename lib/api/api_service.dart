@@ -1,146 +1,109 @@
+#lib/api/api_service.dart
+
 import 'package:dio/dio.dart';
 import 'package:matin_mafhoom/config.dart';
+import 'package:matin_mafhoom/services/token_service.dart';
 
 class ApiService {
-  // Singleton Dio
+  // 1. Create a Dio instance
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: serverUrl, // مثال: https://api.matinmafhoom.com
-      connectTimeout: Duration(seconds: 15),
-      receiveTimeout: Duration(seconds: 15),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      baseUrl: serverUrl, // Example: http://10.0.2.2:8000/api/v1
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
     ),
   );
 
-  // ---------------------------------------------------------
-  // 🟪 انتخاب توکن به صورت داینامیک
-  // ---------------------------------------------------------
-  static void setToken(String token) {
-    _dio.options.headers['Authorization'] = 'Bearer $token';
+  // 2. Private constructor
+  ApiService._privateConstructor() {
+    _addInterceptors();
   }
 
-  // ---------------------------------------------------------
-  // 🟩 تست سرور /health
-  // ---------------------------------------------------------
-  static Future<bool> checkHealth() async {
+  // 3. Singleton instance
+  static final ApiService _instance = ApiService._privateConstructor();
+  factory ApiService() => _instance;
+
+  // 4. Interceptor setup
+  void _addInterceptors() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          // --- This runs BEFORE every request ---
+          // Get the token from secure storage
+          final token = await TokenService.getToken();
+          if (token != null) {
+            // Add the token to the header
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          // Continue with the request
+          return handler.next(options);
+        },
+        onError: (DioException e, handler) {
+          // --- You can handle global errors here ---
+          // For example, if a 401 Unauthorized error occurs, log the user out.
+          if (e.response?.statusCode == 401) {
+            print("Token expired or invalid. Logging out.");
+            TokenService.clearToken();
+            // Here you would navigate the user to the login screen
+          }
+          return handler.next(e);
+        },
+      ),
+    );
+  }
+
+  // --- API Methods (Refactored) ---
+
+  // 🟩 Health Check
+  Future<bool> checkHealth() async {
     try {
       final response = await _dio.get("/health");
-
-      if (response.statusCode == 200 &&
-          response.data != null &&
-          response.data["status"] == "ok") {
-        return true;
-      }
-      return false;
+      return response.statusCode == 200 && response.data?['status'] == 'ok';
     } catch (e) {
       print("❌ Error in checkHealth(): $e");
       return false;
     }
   }
 
-  // ---------------------------------------------------------
-  // 🟦 ارسال رزرو
-  // ---------------------------------------------------------
-  static Future<bool> reserve({
-    required String date,
-    required String slot,
-    required String phone,
-  }) async {
+  // 🟨 Authentication
+  Future<String?> login(String phone, String otp) async {
     try {
+      // Use FormData for OAuth2PasswordRequestForm
+      final formData = FormData.fromMap({
+        'username': phone, // Mapped to phone
+        'password': otp,   // Mapped to otp
+      });
+
       final response = await _dio.post(
-        "/reserve",
-        data: {
-          "date": date,
-          "slot": slot,
-          "phone": phone,
-        },
+        "/auth/token",
+        data: formData,
       );
 
-      if (response.statusCode == 200 &&
-          response.data.toString().contains("Reservation saved")) {
-        return true;
+      if (response.statusCode == 200 && response.data?['access_token'] != null) {
+        final token = response.data['access_token'];
+        // Save the token immediately after a successful login
+        await TokenService.saveToken(token);
+        return token;
       }
-
-      if (response.statusCode == 409) {
-        return false; // اسلات رزرو شده
-      }
-
-      return false;
-    } catch (e) {
-      print("❌ Error in reserve(): $e");
-      return false;
-    }
-  }
-
-  // ---------------------------------------------------------
-  // 🟩 دریافت اسلات‌های رزرو شده
-  // ---------------------------------------------------------
-  static Future<List<String>> getReservations(String date) async {
-    try {
-      final response = await _dio.get(
-        "/reservations",
-        queryParameters: {"date": date},
-      );
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-
-        if (data is List) {
-          return data
-              .map((e) => e is Map && e['slot'] != null
-                  ? e['slot'].toString()
-                  : e.toString())
-              .toList();
-        }
-
-        return <String>[];
-      }
-      throw Exception("خطای سرور: ${response.statusCode}");
-    } catch (e) {
-      print("❌ Error in getReservations(): $e");
-      return <String>[];
-    }
-  }
-
-  // ---------------------------------------------------------
-  // 🟧 ارسال OTP
-  // ---------------------------------------------------------
-  static Future<bool> sendOtp(String phone) async {
-    try {
-      final response = await _dio.post(
-        "/send_otp",
-        data: {"phone": phone},
-      );
-
-      return response.statusCode == 200 &&
-          response.data["ok"] == true;
-    } catch (e) {
-      print("❌ Error in sendOtp(): $e");
-      return false;
-    }
-  }
-
-  // ---------------------------------------------------------
-  // 🟨 تأیید OTP + دریافت توکن
-  // ---------------------------------------------------------
-  static Future<String?> verifyOtp(String phone, String code) async {
-    try {
-      final response = await _dio.post(
-        "/verify_otp",
-        data: {"phone": phone, "code": code},
-      );
-
-      if (response.statusCode == 200 && response.data["ok"] == true) {
-        return response.data["token"];
-      }
-
       return null;
     } catch (e) {
-      print("❌ Error in verifyOtp(): $e");
+      print("❌ Error in login(): $e");
       return null;
+    }
+  }
+
+  // Example of a protected endpoint call
+  // 🟪 Get My Reservations
+  Future<void> getMyReservations() async {
+    try {
+      // No need to set token manually, the interceptor handles it!
+      final response = await _dio.get("/reservations/me");
+      
+      // Now you can process the list of reservations
+      print("My Reservations: ${response.data}");
+
+    } catch (e) {
+      print("❌ Error in getMyReservations(): $e");
     }
   }
 }
-

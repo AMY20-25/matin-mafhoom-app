@@ -3,31 +3,16 @@ import 'screens/home_screen.dart';
 import 'screens/booking_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart'; // 1. Import the new splash screen
 import 'theme.dart';
-import 'services/token_service.dart';
-import 'screens/live_model_screen.dart';
-import 'api/api_service.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 🔵 تست اتصال به سرور FastAPI → /health
-  final health = await ApiService.checkHealth();
-  print("🔍 HEALTH CHECK RESULT → $health");
-
-  // 🔵 بررسی وجود توکن ذخیره‌شده
-  final token = await TokenService.getToken();
-
-  runApp(
-    MatinApp(
-      initialRoute: token != null ? '/' : '/welcome',
-    ),
-  );
+// No need for heavy async operations in main anymore
+void main() {
+  runApp(const MatinApp());
 }
 
 class MatinApp extends StatelessWidget {
-  final String initialRoute;
-  const MatinApp({required this.initialRoute, super.key});
+  const MatinApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +20,11 @@ class MatinApp extends StatelessWidget {
       title: 'Matin Mafhoom',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      initialRoute: initialRoute,
+      // 2. Always start with the splash screen
+      initialRoute: '/splash', 
       routes: {
+        // 3. Add the splash screen to the routes
+        '/splash': (context) => const SplashScreen(), 
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/': (context) => const HomeScreen(),
@@ -50,34 +38,26 @@ class MatinApp extends StatelessWidget {
   }
 }
 
-// صفحات خالی برای تست ناوبری
+// --- Placeholder screens can remain unchanged ---
+
 class GalleryScreen extends StatelessWidget {
   const GalleryScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text("صفحه گالری")),
-    );
+    return const Scaffold(body: Center(child: Text("صفحه گالری")));
   }
 }
-
 class PartnersScreen extends StatelessWidget {
   const PartnersScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text("صفحه همکاران")),
-    );
+    return const Scaffold(body: Center(child: Text("صفحه همکاران")));
   }
 }
-
 class OffersScreen extends StatelessWidget {
   const OffersScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text("صفحه تخفیف‌ها")),
-    );
+    return const Scaffold(body: Center(child: Text("صفحه تخفیف‌ها")));
   }
 }
-
