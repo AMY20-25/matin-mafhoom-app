@@ -1,40 +1,21 @@
-import os
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+import os
 
-# Load environment variables
-load_dotenv()
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Read DB URL
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL not found in environment variables (.env file)")
-
-# Create engine
 engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    echo=False  # اگر لاگ SQL خواستی True کن
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"options": "-c timezone=utc"}
 )
 
-# Session
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
-
-# Base class for models
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-
-# FastAPI dependency
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-

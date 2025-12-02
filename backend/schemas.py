@@ -1,73 +1,63 @@
 from datetime import datetime, date
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, List
+from pydantic import BaseModel, Field
 from enum import Enum
 
+# ==============================
+# Enums
+# ==============================
 class ReservationStatus(str, Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+    DONE = "done"
 
 class PaymentStatus(str, Enum):
     UNPAID = "unpaid"
     PAID = "paid"
     REFUNDED = "refunded"
+    FAILED = "failed"
 
-# ======================================================
+# ==============================
 # Users
-# ======================================================
+# ==============================
 class UserBase(BaseModel):
-    name: Optional[str] = None
-    family: Optional[str] = None
-    phone: str
-    national_code: Optional[str] = None
-    avatar_url: Optional[str] = None
+    phone_number: str = Field(..., pattern=r"^09[0-9]{9}$")
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_date: Optional[date] = None
 
-class UserRegister(BaseModel):
-    phone: str
-    name: Optional[str] = None
-    family: Optional[str] = None
-
-class UserCreate(UserBase):
-    role: Optional[str] = "customer"
-
-class UserResponse(UserBase):
-    id: int
-    role: str
-    created_at: datetime
-    class Config:
-        from_attributes = True
+class UserRegister(UserBase):
+    pass
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    family: Optional[str] = None
-    phone: Optional[str] = None
-    national_code: Optional[str] = None
-    avatar_url: Optional[str] = None
-    role: Optional[str] = None
-    class Config:
-        from_attributes = True
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_date: Optional[date] = None
 
 class UserOut(BaseModel):
     id: int
-    name: Optional[str]
-    family: Optional[str]
-    phone: str
+    phone_number: str
+    first_name: Optional[str]
+    last_name: Optional[str]
     role: str
+    is_active: bool
     created_at: datetime
+    
     class Config:
         from_attributes = True
 
-# ======================================================
+# Internal use, not exposed to API
+class UserCreate(UserBase):
+    role: Optional[str] = "customer"
+
+# ==============================
 # Reservations
-# ======================================================
+# ==============================
 class ReservationBase(BaseModel):
     user_id: int
     service_type: str
-    date: date
-    time: str
-    price: Optional[int] = None
-    deposit_paid: Optional[int] = None
+    date: datetime
     notes: Optional[str] = None
 
 class ReservationCreate(ReservationBase):
@@ -78,62 +68,62 @@ class ReservationUpdate(BaseModel):
     payment_status: Optional[PaymentStatus] = None
     notes: Optional[str] = None
 
-class ReservationResponse(BaseModel):
+class ReservationResponse(ReservationBase):
     id: int
-    coworker_id: Optional[int] = None
+    coworker_id: Optional[int]
     status: ReservationStatus
     payment_status: PaymentStatus
     created_at: datetime
     updated_at: datetime
+    
     class Config:
         from_attributes = True
 
-# ======================================================
+# ==============================
 # Payments
-# ======================================================
+# ==============================
 class PaymentBase(BaseModel):
     user_id: int
+    reservation_id: int
     amount: float
 
 class PaymentCreate(PaymentBase):
-    reservation_id: Optional[int] = None
+    pass
 
-class PaymentResponse(BaseModel):
+class PaymentResponse(PaymentBase):
     id: int
-    reservation_id: Optional[int]
-    payment_date: datetime
     status: PaymentStatus
     created_at: datetime
+    
     class Config:
         from_attributes = True
 
-# ======================================================
+# ==============================
 # Discounts
-# ======================================================
-class DiscountBase(BaseModel):
+# ==============================
+class DiscountCreate(BaseModel):
     user_id: int
     discount_type: str
     percentage: int
-    valid_until: Optional[datetime] = None
-
-class DiscountCreate(DiscountBase):
-    pass
+    expires_at: Optional[datetime] = None
 
 class DiscountResponse(BaseModel):
     id: int
+    code: str
+    percentage: int
     used: bool
-    created_at: datetime
+    
     class Config:
         from_attributes = True
 
-# ======================================================
+# ==============================
 # Referrals
-# ======================================================
+# ==============================
 class ReferralResponse(BaseModel):
     id: int
     user_id: int
     referral_code: str
     invited_count: int
-    created_at: datetime
+    
     class Config:
         from_attributes = True
