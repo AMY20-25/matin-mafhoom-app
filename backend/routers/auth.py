@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-
+from auth import get_current_user
 from database import get_db
 from crud.crud_users import verify_otp
 from auth import create_access_token

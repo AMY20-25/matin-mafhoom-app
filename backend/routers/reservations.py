@@ -36,9 +36,8 @@ def list_all_reservations(db: Session = Depends(get_db), admin_user: User = Depe
     Retrieves all reservations from all users.
     Requires admin privileges.
     """
-    # This logic should be in a CRUD function for consistency
-    return db.query(Reservation).order_by(Reservation.date.desc()).all()
-
+    # Now using the consistent CRUD function
+    return get_all_reservations(db)
 # =====================================================
 # Create a new reservation for the CURRENT logged-in user
 # =====================================================

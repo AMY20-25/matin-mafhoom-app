@@ -111,3 +111,9 @@ def get_reservation(db: Session, reservation_id: int):
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation
 
+# -------------------------------
+# Get all reservations (for admin)
+# -------------------------------
+def get_all_reservations(db: Session):
+    """Retrieves all reservations from the database."""
+    return db.query(Reservation).order_by(Reservation.date.desc()).all()
