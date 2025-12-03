@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import random
 from datetime import datetime, timedelta, timezone
-
+from services import sms_service
 from models import User, OtpCode
 from schemas import UserRegister, UserUpdate
 
@@ -42,8 +42,10 @@ def create_and_send_otp(db: Session, phone: str):
     now = datetime.now()
     expires_at = now + timedelta(minutes=3)
     
-    print(f"--- OTP for {phone} is {code} ---")
-
+     # --- For Production: Enable real SMS sending ---
+    message = f"کد ورود شما به سالن متین مفهوم: {code}\nلغو11"
+    sms_service.send_sms(phone_number=phone, message=message) # <--- فعال شد
+    #print(f"--- OTP for {phone} is {code} ---")
     db.query(OtpCode).filter(OtpCode.phone_number == phone).delete()
     otp_record = OtpCode(
         phone_number=phone,

@@ -16,8 +16,6 @@ def send_sms(phone_number: str, message: str):
     if not all([SMS_USERNAME, SMS_PASSWORD, SMS_FROM]):
         error_msg = "SMS service is not configured. Missing environment variables."
         print(f"ERROR: {error_msg}")
-        # In a real app, you might not want to raise an exception here,
-        # but for debugging, it's useful.
         raise HTTPException(status_code=500, detail=error_msg)
 
     payload = {
@@ -31,20 +29,21 @@ def send_sms(phone_number: str, message: str):
 
     try:
         response = requests.post(SMS_API_URL, json=payload, timeout=10)
-        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+        response.raise_for_status()
         
         response_json = response.json()
         print(f"SMS API Response: {response_json}")
 
-        if response_json.get("Value") == "1000": # Specific success code for this provider
-             return {"status": "success", "message": "SMS sent successfully."}
+        # --- THE FINAL FIX ---
+        # Check for the correct success status from the provider
+        if response_json.get("RetStatus") == 1 and len(str(response_json.get("Value"))) > 5:
+             print("SUCCESS: SMS considered sent successfully by the provider.")
+             return {"status": "success", "message_id": response_json.get("Value")}
         else:
-             # Log the specific error from the provider
-             error_detail = response_json.get("StrValue", "Unknown error from SMS provider")
-             print(f"ERROR: SMS provider returned an error: {error_detail}")
+             error_detail = response_json.get("StrRetStatus", "Unknown error")
+             print(f"ERROR: SMS provider returned a failure status: {error_detail}")
              raise HTTPException(status_code=500, detail=f"SMS provider error: {error_detail}")
 
     except requests.RequestException as e:
         print(f"ERROR: Could not connect to SMS service: {e}")
         raise HTTPException(status_code=503, detail="SMS service is currently unavailable.")
-

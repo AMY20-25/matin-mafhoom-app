@@ -1,21 +1,23 @@
-#lib/api/api_service.dart
-
 import 'package:dio/dio.dart';
 import 'package:matin_mafhoom/config.dart';
+import 'package:matin_mafhoom/models/reservation_model.dart'; // Import the new model
 import 'package:matin_mafhoom/services/token_service.dart';
 
+// A modern, singleton ApiService using Dio and Interceptors.
 class ApiService {
-  // 1. Create a Dio instance
-  static final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: serverUrl, // Example: http://10.0.2.2:8000/api/v1
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-    ),
-  );
+  // 1. Create a Dio instance with base options
+  final Dio _dio;
 
   // 2. Private constructor
-  ApiService._privateConstructor() {
+  ApiService._privateConstructor()
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: serverUrl,
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+            headers: {'Content-Type': 'application/json'},
+          ),
+        ) {
     _addInterceptors();
   }
 
@@ -28,23 +30,16 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // --- This runs BEFORE every request ---
-          // Get the token from secure storage
           final token = await TokenService.getToken();
           if (token != null) {
-            // Add the token to the header
             options.headers['Authorization'] = 'Bearer $token';
           }
-          // Continue with the request
           return handler.next(options);
         },
         onError: (DioException e, handler) {
-          // --- You can handle global errors here ---
-          // For example, if a 401 Unauthorized error occurs, log the user out.
           if (e.response?.statusCode == 401) {
-            print("Token expired or invalid. Logging out.");
+            print("ApiService: Unauthorized. Clearing token.");
             TokenService.clearToken();
-            // Here you would navigate the user to the login screen
           }
           return handler.next(e);
         },
@@ -52,36 +47,28 @@ class ApiService {
     );
   }
 
-  // --- API Methods (Refactored) ---
+  // --- API Methods ---
 
-  // 🟩 Health Check
-  Future<bool> checkHealth() async {
+  Future<bool> requestOtp(String phoneNumber) async {
     try {
-      final response = await _dio.get("/health");
-      return response.statusCode == 200 && response.data?['status'] == 'ok';
+      final response = await _dio.post(
+        "/auth/request-otp",
+        data: {"phone_number": phoneNumber},
+      );
+      return response.statusCode == 200;
     } catch (e) {
-      print("❌ Error in checkHealth(): $e");
+      print("❌ Error in requestOtp(): $e");
       return false;
     }
   }
 
-  // 🟨 Authentication
   Future<String?> login(String phone, String otp) async {
     try {
-      // Use FormData for OAuth2PasswordRequestForm
-      final formData = FormData.fromMap({
-        'username': phone, // Mapped to phone
-        'password': otp,   // Mapped to otp
-      });
-
-      final response = await _dio.post(
-        "/auth/token",
-        data: formData,
-      );
+      final formData = FormData.fromMap({'username': phone, 'password': otp});
+      final response = await _dio.post("/auth/token", data: formData);
 
       if (response.statusCode == 200 && response.data?['access_token'] != null) {
         final token = response.data['access_token'];
-        // Save the token immediately after a successful login
         await TokenService.saveToken(token);
         return token;
       }
@@ -92,18 +79,46 @@ class ApiService {
     }
   }
 
-  // Example of a protected endpoint call
-  // 🟪 Get My Reservations
-  Future<void> getMyReservations() async {
+  Future<dynamic> getMyProfile() async {
     try {
-      // No need to set token manually, the interceptor handles it!
-      final response = await _dio.get("/reservations/me");
-      
-      // Now you can process the list of reservations
-      print("My Reservations: ${response.data}");
+      final response = await _dio.get("/auth/users/me");
+      return response.data;
+    } catch (e) {
+      print("❌ Error in getMyProfile(): $e");
+      return null;
+    }
+  }
 
+  // --- NEW: Reservation Methods ---
+
+  /// Fetches the current user's reservations
+  Future<List<Reservation>> getMyReservations() async {
+    try {
+      final response = await _dio.get("/reservations/me");
+      final List<dynamic> data = response.data;
+      return data.map((json) => Reservation.fromJson(json)).toList();
     } catch (e) {
       print("❌ Error in getMyReservations(): $e");
+      return [];
+    }
+  }
+
+  /// Creates a new reservation
+  Future<bool> createReservation(DateTime date, String serviceType) async {
+    try {
+      // The backend now reads user_id from the token, so we don't send it.
+      final response = await _dio.post(
+        "/reservations/",
+        data: {
+          'service_type': serviceType,
+          'date': date.toIso8601String(),
+        },
+      );
+      return response.statusCode == 201; // 201 Created
+    } catch (e) {
+      print("❌ Error in createReservation(): $e");
+      return false;
     }
   }
 }
+

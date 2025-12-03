@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:matin_mafhoom/api/api_service.dart'; // 1. Import our new ApiService
+import 'package:matin_mafhoom/api/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,65 +12,70 @@ class _LoginScreenState extends State<LoginScreen> {
   final phoneController = TextEditingController();
   final codeController = TextEditingController();
   
-  bool loading = false;
+  bool isCodeSent = false;
+  bool isLoading = false;
   String? errorMessage;
+  String? successMessage;
 
-  // No need for separate codeSent flag, we'll just use one function
-  
-  /// Verifies the OTP and logs the user in
-  Future<void> _login() async {
-    setState(() {
-      loading = true;
-      errorMessage = null;
-    });
+  // --- Logic for Requesting OTP ---
+  Future<void> _requestOtp() async {
+    if (isLoading) return;
+    setState(() { isLoading = true; errorMessage = null; successMessage = null; });
+
+    final phone = phoneController.text.trim();
+    if (phone.isEmpty || !RegExp(r"^09[0-9]{9}$").hasMatch(phone)) {
+      setState(() { isLoading = false; errorMessage = "شماره موبایل معتبر نیست"; });
+      return;
+    }
+    
+    final success = await ApiService().requestOtp(phone);
+
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        if (success) {
+          isCodeSent = true;
+          successMessage = "کد تایید با موفقیت ارسال شد.";
+        } else {
+          errorMessage = "خطا در ارسال کد. لطفاً دوباره تلاش کنید.";
+        }
+      });
+    }
+  }
+
+  // --- Logic for Verifying OTP and Logging In ---
+  Future<void> _verifyAndLogin() async {
+    if (isLoading) return;
+    setState(() { isLoading = true; errorMessage = null; successMessage = null; });
 
     final phone = phoneController.text.trim();
     final code = codeController.text.trim();
-
     if (phone.isEmpty || code.isEmpty) {
-      setState(() {
-        loading = false;
-        errorMessage = "شماره موبایل و کد را وارد کنید";
-      });
+      setState(() { isLoading = false; errorMessage = "کد تایید را وارد کنید"; });
       return;
     }
 
-    try {
-      // 2. Use the new, clean ApiService method
-      final token = await ApiService().login(phone, code);
+    final token = await ApiService().login(phone, code);
 
+    if (mounted) {
       if (token != null) {
-        // On success, navigate to the home screen
-        // The token is already saved by the ApiService
-        if (mounted) { // Check if the widget is still in the tree
-          Navigator.pushReplacementNamed(context, "/"); 
-        }
+        Navigator.pushReplacementNamed(context, '/'); 
       } else {
-        // ApiService().login returns null on failure
         setState(() {
-          errorMessage = "شماره یا کد وارد شده صحیح نیست";
-        });
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = "خطا در ارتباط با سرور";
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          loading = false;
+          isLoading = false;
+          errorMessage = "کد وارد شده صحیح نیست";
         });
       }
     }
   }
 
+  // --- UI Build Method (Your UI is preserved) ---
   @override
   Widget build(BuildContext context) {
-    // --- Your UI Code - UNCHANGED ---
     const Color bg = Color(0xFFFFFFFF);
     const Color blob = Color(0xFF6D60F8);
-    const Color button = Color(0xFF6D60F8);
-    const Color arrow = Color(0xFFFFFFFF);
+    const Color buttonColor = Color(0xFF6D60F8);
+    const Color arrowColor = Color(0xFFFFFFFF);
 
     return Scaffold(
       backgroundColor: bg,
@@ -86,47 +91,57 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 40),
-                    const Text(
-                      "ورود یا ثبت نام", // Updated Title
+                    Text(
+                      isCodeSent ? "کد را وارد کنید" : "ورود یا ثبت نام",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                     const SizedBox(height: 30),
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
+                      readOnly: isCodeSent,
                       decoration: const InputDecoration(hintText: "شماره موبایل (مثلاً 09123456789)"),
                     ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: codeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: "کد تأیید ارسال شده"),
-                    ),
+                    if (isCodeSent) ...[
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: codeController,
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        decoration: const InputDecoration(hintText: "کد تأیید ۶ رقمی"),
+                      ),
+                    ],
                     const SizedBox(height: 30),
                     ElevatedButton(
-                      onPressed: loading ? null : _login, // 3. Use the single _login function
+                      onPressed: isLoading ? null : (isCodeSent ? _verifyAndLogin : _requestOtp),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: button,
-                        foregroundColor: arrow,
+                        backgroundColor: buttonColor,
+                        foregroundColor: arrowColor,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: loading
+                      child: isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Row(
+                          : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text("تأیید و ورود", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: arrow)),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward, color: arrow),
+                                Text(isCodeSent ? "تأیید و ورود" : "ارسال کد", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward),
                               ],
                             ),
                     ),
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: 20),
-                      Text(errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-                    ],
+                    if (errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Text(errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                      ),
+                    if (successMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Text(successMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.green)),
+                      ),
                   ],
                 ),
               ),
@@ -138,11 +153,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// --- Your _CornerBlob Widget - UNCHANGED ---
 class _CornerBlob extends StatelessWidget {
   final Color color;
   final double size;
-  const _CornerBlob({required this.color, required this.size, super.key});
+  const _CornerBlob({required this.color, required this.size});
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -152,3 +166,4 @@ class _CornerBlob extends StatelessWidget {
     );
   }
 }
+

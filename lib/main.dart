@@ -5,10 +5,14 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart'; // 1. Import the new splash screen
 import 'theme.dart';
+import 'screens/live_model_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 // No need for heavy async operations in main anymore
 void main() {
-  runApp(const MatinApp());
+  initializeDateFormatting('fa_IR', null).then((_) {
+    runApp(const MatinApp());
+  });
 }
 
 class MatinApp extends StatelessWidget {
@@ -32,7 +36,7 @@ class MatinApp extends StatelessWidget {
         '/gallery': (context) => const GalleryScreen(),
         '/partners': (context) => const PartnersScreen(),
         '/offers': (context) => const OffersScreen(),
-        '/liveModel': (context) => const LiveModelScreen(),
+        '/liveModel': (context) => LiveModelScreen(),
       },
     );
   }

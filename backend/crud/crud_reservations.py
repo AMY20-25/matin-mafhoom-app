@@ -1,119 +1,66 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime
+
 from models import Reservation
 from schemas import ReservationCreate, ReservationUpdate
 
+def get_reservation(db: Session, reservation_id: int):
+    """Retrieves a single reservation by its ID."""
+    return db.query(Reservation).filter(Reservation.id == reservation_id).first()
 
-# -------------------------------
-# Check time conflict
-# -------------------------------
-def check_reservation_conflict(db: Session, date, start_time, end_time):
-    conflict = (
-        db.query(Reservation)
-        .filter(
-            Reservation.date == date,
-            Reservation.start_time < end_time,
-            Reservation.end_time > start_time,
-            Reservation.status != "canceled",
-        )
-        .first()
-    )
-    return conflict
+def get_user_reservations(db: Session, user_id: int):
+    """Retrieves all reservations for a specific user."""
+    return db.query(Reservation).filter(Reservation.user_id == user_id).order_by(Reservation.date.desc()).all()
 
+def get_all_reservations(db: Session):
+    """Retrieves all reservations from the database (for admin)."""
+    return db.query(Reservation).order_by(Reservation.date.desc()).all()
 
-# -------------------------------
-# Create a reservation
-# -------------------------------
-def create_reservation(db: Session, data: ReservationCreate, user_id: int):
-    # 1) Check conflict
-    conflict = check_reservation_conflict(
-        db, data.date, data.start_time, data.end_time
-    )
+def check_reservation_conflict(db: Session, date: datetime):
+    """
+    Checks if a reservation already exists for a given datetime slot.
+    This is a simplified check. A real-world scenario would be more complex.
+    """
+    return db.query(Reservation).filter(Reservation.date == date, Reservation.status != "cancelled").first()
+
+def create_reservation(db: Session, reservation: ReservationCreate):
+    """Creates a new reservation record."""
+    
+    # 1. Check for time conflicts
+    conflict = check_reservation_conflict(db, date=reservation.date)
     if conflict:
         raise HTTPException(
-            status_code=400,
-            detail="Time slot already reserved",
+            status_code=409, # 409 Conflict is more appropriate
+            detail="This time slot is already reserved.",
         )
-
-    # 2) Create reservation
-    reservation = Reservation(
-        user_id=user_id,
-        service_id=data.service_id,
-        date=data.date,
-        start_time=data.start_time,
-        end_time=data.end_time,
-        note=data.note,
-        status="pending",
-        price=data.price,
-        deposit_amount=data.deposit_amount,
-        is_paid=False,
+        
+    # 2. Create the new Reservation model instance
+    db_reservation = Reservation(
+        user_id=reservation.user_id,
+        service_type=reservation.service_type,
+        date=reservation.date,
+        notes=reservation.notes,
+        status="pending", # Default status
+        payment_status="unpaid" # Default status
     )
-
-    db.add(reservation)
+    
+    db.add(db_reservation)
     db.commit()
-    db.refresh(reservation)
-    return reservation
+    db.refresh(db_reservation)
+    return db_reservation
 
-
-# -------------------------------
-# Update reservation status OR time OR notes
-# -------------------------------
 def update_reservation(db: Session, reservation_id: int, data: ReservationUpdate):
-    reservation = (
-        db.query(Reservation)
-        .filter(Reservation.id == reservation_id)
-        .first()
-    )
-
-    if not reservation:
+    """Updates a reservation's status or notes."""
+    db_reservation = get_reservation(db, reservation_id)
+    if not db_reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
-
-    # Update only provided fields
-    if data.date:
-        reservation.date = data.date
-    if data.start_time:
-        reservation.start_time = data.start_time
-    if data.end_time:
-        reservation.end_time = data.end_time
-    if data.note is not None:
-        reservation.note = data.note
-    if data.status:
-        reservation.status = data.status
-
+    
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_reservation, key, value)
+        
     db.commit()
-    db.refresh(reservation)
-    return reservation
+    db.refresh(db_reservation)
+    return db_reservation
 
-
-# -------------------------------
-# Get reservations for a user
-# -------------------------------
-def get_user_reservations(db: Session, user_id: int):
-    return (
-        db.query(Reservation)
-        .filter(Reservation.user_id == user_id)
-        .order_by(Reservation.date, Reservation.start_time)
-        .all()
-    )
-
-
-# -------------------------------
-# Get single reservation
-# -------------------------------
-def get_reservation(db: Session, reservation_id: int):
-    reservation = (
-        db.query(Reservation)
-        .filter(Reservation.id == reservation_id)
-        .first()
-    )
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-    return reservation
-
-# -------------------------------
-# Get all reservations (for admin)
-# -------------------------------
-def get_all_reservations(db: Session):
-    """Retrieves all reservations from the database."""
-    return db.query(Reservation).order_by(Reservation.date.desc()).all()
