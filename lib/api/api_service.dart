@@ -1,14 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:matin_mafhoom/config.dart';
-import 'package:matin_mafhoom/models/reservation_model.dart'; // Import the new model
+import 'package:matin_mafhoom/models/reservation_model.dart';
 import 'package:matin_mafhoom/services/token_service.dart';
 
-// A modern, singleton ApiService using Dio and Interceptors.
 class ApiService {
-  // 1. Create a Dio instance with base options
   final Dio _dio;
 
-  // 2. Private constructor
   ApiService._privateConstructor()
       : _dio = Dio(
           BaseOptions(
@@ -21,11 +18,9 @@ class ApiService {
     _addInterceptors();
   }
 
-  // 3. Singleton instance
   static final ApiService _instance = ApiService._privateConstructor();
   factory ApiService() => _instance;
 
-  // 4. Interceptor setup
   void _addInterceptors() {
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -47,14 +42,10 @@ class ApiService {
     );
   }
 
-  // --- API Methods ---
-
+  // --- Auth Methods ---
   Future<bool> requestOtp(String phoneNumber) async {
     try {
-      final response = await _dio.post(
-        "/auth/request-otp",
-        data: {"phone_number": phoneNumber},
-      );
+      final response = await _dio.post("/auth/request-otp", data: {"phone_number": phoneNumber});
       return response.statusCode == 200;
     } catch (e) {
       print("❌ Error in requestOtp(): $e");
@@ -66,7 +57,6 @@ class ApiService {
     try {
       final formData = FormData.fromMap({'username': phone, 'password': otp});
       final response = await _dio.post("/auth/token", data: formData);
-
       if (response.statusCode == 200 && response.data?['access_token'] != null) {
         final token = response.data['access_token'];
         await TokenService.saveToken(token);
@@ -79,6 +69,7 @@ class ApiService {
     }
   }
 
+  // --- User Profile Methods ---
   Future<dynamic> getMyProfile() async {
     try {
       final response = await _dio.get("/auth/users/me");
@@ -89,9 +80,23 @@ class ApiService {
     }
   }
 
-  // --- NEW: Reservation Methods ---
+  Future<bool> updateMyProfile({String? firstName, String? lastName}) async {
+    try {
+      final response = await _dio.patch(
+        "/users/me",
+        data: {
+          "first_name": firstName,
+          "last_name": lastName,
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("❌ Error in updateMyProfile(): $e");
+      return false;
+    }
+  }
 
-  /// Fetches the current user's reservations
+  // --- Reservation Methods ---
   Future<List<Reservation>> getMyReservations() async {
     try {
       final response = await _dio.get("/reservations/me");
@@ -103,10 +108,8 @@ class ApiService {
     }
   }
 
-  /// Creates a new reservation
   Future<bool> createReservation(DateTime date, String serviceType) async {
     try {
-      // The backend now reads user_id from the token, so we don't send it.
       final response = await _dio.post(
         "/reservations/",
         data: {
@@ -114,7 +117,7 @@ class ApiService {
           'date': date.toIso8601String(),
         },
       );
-      return response.statusCode == 201; // 201 Created
+      return response.statusCode == 201;
     } catch (e) {
       print("❌ Error in createReservation(): $e");
       return false;
