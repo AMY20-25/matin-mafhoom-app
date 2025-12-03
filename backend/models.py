@@ -5,9 +5,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
-# ==============================
-# Users Table
-# ==============================
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -18,15 +15,15 @@ class User(Base):
     birth_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-
+    
     reservations = relationship("Reservation", foreign_keys="[Reservation.user_id]", back_populates="user")
     managed_coworkers = relationship("CoworkerInviteCode", foreign_keys="[CoworkerInviteCode.manager_id]", back_populates="manager")
     payments = relationship("Payment", back_populates="user")
-    referral = relationship("Referral", back_populates="user", uselist=False)
+    
+    # This relationship seems incorrect based on the new understanding of 'referrals' table.
+    # We will adjust or remove it. For now, let's keep it commented.
+    # referral = relationship("Referral", back_populates="user", uselist=False)
 
-# ==============================
-# OTP Table
-# ==============================
 class OtpCode(Base):
     __tablename__ = "otp_codes"
     id = Column(Integer, primary_key=True, index=True)
@@ -35,21 +32,14 @@ class OtpCode(Base):
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
-# ==============================
-# Invite Codes for Coworkers
-# ==============================
 class CoworkerInviteCode(Base):
     __tablename__ = "coworker_invite_codes"
     id = Column(Integer, primary_key=True, index=True)
     manager_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     code = Column(String(20), unique=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    
     manager = relationship("User", foreign_keys=[manager_id], back_populates="managed_coworkers")
 
-# ==============================
-# Reservations
-# ==============================
 class Reservation(Base):
     __tablename__ = "reservations"
     id = Column(Integer, primary_key=True, index=True)
@@ -62,13 +52,9 @@ class Reservation(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
-
     user = relationship("User", foreign_keys=[user_id], back_populates="reservations")
     payment = relationship("Payment", back_populates="reservation", uselist=False)
 
-# ==============================
-# Payment System
-# ==============================
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, index=True)
@@ -78,13 +64,9 @@ class Payment(Base):
     payment_type = Column(String(20), nullable=True)
     status = Column(String(20), default="pending", nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-    
     user = relationship("User", back_populates="payments")
     reservation = relationship("Reservation", back_populates="payment")
 
-# ==============================
-# Discounts
-# ==============================
 class Discount(Base):
     __tablename__ = "discounts"
     id = Column(Integer, primary_key=True, index=True)
@@ -98,15 +80,18 @@ class Discount(Base):
     used = Column(Boolean, default=False, nullable=False)
 
 # ==============================
-# Referral System
+# Referral System (Final Correction)
 # ==============================
 class Referral(Base):
     __tablename__ = "referrals"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    referral_code = Column(String(20), unique=True, nullable=False)
-    invited_count = Column(Integer, default=0, nullable=False)
+    # The user who WAS invited
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # The phone number of the user who DID the inviting
+    invited_phone = Column(String(15), nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     
-    user = relationship("User", back_populates="referral", uselist=False)
+    # Relationship to the invited user
+    invited_user = relationship("User", foreign_keys=[user_id])
 

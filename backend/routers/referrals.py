@@ -1,33 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-# Import dependencies and models
 from database import get_db
 from models import User
 from crud import crud_referrals
-from schemas import ReferralResponse 
+from schemas import ReferralCreate, ReferralResponse
 from auth import get_current_user
 
 router = APIRouter(prefix="/referrals", tags=["Referrals"])
 
-# We need a Pydantic model for the response, inheriting from the base
-class ReferralInfo(ReferralResponse):
-    pass # ReferralResponse already has all the fields we need
+@router.post("/", response_model=ReferralResponse)
+def create_new_referral(referral_data: ReferralCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return crud_referrals.create_referral(db, referral=referral_data, inviter_user=current_user)
 
-@router.get("/me", response_model=ReferralInfo)
-def read_my_referral_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crud_referrals.create_referral_profile(db, user_id=current_user.id)
+@router.get("/me", response_model=List[ReferralResponse])
+def read_my_sent_referrals(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # We now pass the user's phone number to the CRUD function
+    return crud_referrals.get_referrals_by_user(db, user_phone=current_user.phone_number)
 
-@router.post("/apply", status_code=status.HTTP_200_OK)
-def apply_referral_code(
-    code: str = Body(..., embed=True), 
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        return crud_referrals.apply_referral_code(db, applying_user_id=current_user.id, code=code)
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
